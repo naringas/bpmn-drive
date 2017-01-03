@@ -1,0 +1,150 @@
+<html>
+  <head>
+    <script type="text/javascript">
+      // Your Client ID can be retrieved from your project in the Google
+      // Developer Console, https://console.developers.google.com
+      var CLIENT_ID = '764744448270-n100afb17b99h0bvh8clnauodc63gotp.apps.googleusercontent.com';
+      var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
+    </script>
+
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="bower_components/bpmn-js/dist/assets/diagram-js.css">
+    <link rel="stylesheet" href="bower_components/bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css">
+    <style>
+    #modeler {
+      padding-top: 70px;
+      height: 100%;
+      width: 100%;
+    }
+    </style>
+  </head>
+  <body>
+    <div id="authorize-div" class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title">Authorize access to Drive API</h4>
+          </div>
+          <div class="modal-body">
+            <button id="authorize-button" onclick="handleAuthClick(event)">Authorize</button>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav">
+            <li><a href="#"><span class="glyphicon glyphicon-folder-open"></span>&nbsp;Open</a></li>
+            <li><a href="#"><span class="glyphicon glyphicon-floppy-disk"></span>&nbsp;Save</a></li>
+          </ul>
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container-fluid -->
+    </nav>
+
+    <div id="modeler"></div>
+
+    <script src="bower_components/jquery/dist/jquery.min.js"></script>
+    <script src="bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="bower_components/bpmn-js/dist/bpmn-modeler.min.js"></script>
+    <script type="text/javascript">
+      var modeler = new window.BpmnJS({
+        container: '#modeler'
+      });
+
+      var url = 'login.bpmn';
+      var xml; // ADD BPMN 2.0 XML HERE
+      $.ajax(url, { dataType : 'text' }).done(function(xml) {
+        modeler.createDiagram();
+      });
+
+      /**
+       * Check if current user has authorized this application.
+       */
+      function checkAuth() {
+        gapi.auth.authorize(
+          {
+            'client_id': CLIENT_ID,
+            'scope': SCOPES.join(' '),
+            'immediate': true
+          }, handleAuthResult);
+      }
+
+      /**
+       * Handle response from authorization server.
+       *
+       * @param {Object} authResult Authorization result.
+       */
+      function handleAuthResult(authResult) {
+        console.log(authResult);
+        if (authResult && !authResult.error) {
+          // Hide auth UI, then load client library.
+          $("#authorize-div").modal('hide');
+          loadDriveApi();
+        } else {
+          // Show auth UI, allowing the user to initiate authorization by
+          // clicking authorize button.
+          $("#authorize-div").modal('show');
+        }
+      }
+
+      /**
+       * Initiate auth flow in response to user clicking authorize button.
+       *
+       * @param {Event} event Button click event.
+       */
+      function handleAuthClick(event) {
+        gapi.auth.authorize(
+          {client_id: CLIENT_ID, scope: SCOPES, immediate: false},
+          handleAuthResult);
+        return false;
+      }
+
+      /**
+       * Load Drive API client library.
+       */
+      function loadDriveApi() {
+        gapi.client.load('drive', 'v3', listFiles);
+      }
+
+      /**
+       * Print files.
+       */
+      function listFiles() {
+        var request = gapi.client.drive.files.list({
+            'pageSize': 10,
+            'fields': "nextPageToken, files(id, name)"
+          });
+
+          request.execute(function(resp) {
+            appendPre('Files:');
+            console.log(resp)
+            var files = resp.files;
+            if (files && files.length > 0) {
+              for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                appendPre(file.name + ' (' + file.id + ')');
+              }
+            } else {
+              appendPre('No files found.');
+            }
+          });
+      }
+
+      /**
+       * Append a pre element to the body containing the given message
+       * as its text node.
+       *
+       * @param {string} message Text to be placed in pre element.
+       */
+      function appendPre(message) {
+        console.log(message);
+      }
+    </script>
+    <script src="https://apis.google.com/js/client.js?onload=checkAuth"></script>
+  </body>
+</html>
